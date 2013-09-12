@@ -4,10 +4,18 @@ import os,cookielib,urllib2
 import re, csv, sqlite3
 from time import sleep
 from TorCtl import TorCtl
+import ConfigParser
+import socket
 
-request_timeout = 3
-repeat_timeout = 3
-use_tor = True
+
+def yoip():
+    global opener
+    try: 
+        ip = re.search("<span class='ip'>([^<]+)</span>", opener.open('http://yoip.ru').read()).group(1)
+    except:
+        ip = 'Unknown'
+    return ip
+    
 
 def open_url(url):
     global opener
@@ -29,9 +37,9 @@ def open_url(url):
                 conn = TorCtl.connect(passphrase="1234qwer")
                 conn.sendAndRecv('signal newnym\r\n')
                 conn.close()
-                import time
-                time.sleep(5)
-                print "IP changed"
+                sleep(5)
+                ip = yoip()
+                print "IP changed to", ip
                 c = 0
             c += 1
             if c > 5:
@@ -67,11 +75,21 @@ conn.commit()
 
 SiteUrl='http://www.autowp.ru'
 
+socket.setdefaulttimeout(300)
 proxy_support = urllib2.ProxyHandler({"http" : "127.0.0.1:8118"} )
 
 cj = cookielib.CookieJar()
 opener = urllib2.build_opener()
 urllib2.install_opener(opener)
+
+section = 'autowp'
+config = ConfigParser.RawConfigParser()
+config.readfp(open('settings.ini'))
+
+request_timeout = config.getint(section, 'request_timeout')
+repeat_timeout = config.getint(section, 'repeat_timeout')
+start_mark = config.get(section, 'start_mark')
+use_tor = config.getboolean(section, 'use_tor')
 
 page = open_url(SiteUrl + '/brands/manufacturer')
 
@@ -82,17 +100,31 @@ re5 = "'(\d{4}.*)"
 re6 = '<a class="thumbnail" href="([^"]+)"'
 
 marks = re.findall(re1, page)
+num_marks = len(marks)
+num_mark = 0
+f = 0 
 
 for mark in marks:
-    print '\nMark:', mark
+    num_mark += 1
+    if mark == start_mark :
+        f = 1
+    if mark == 'pacific':
+        f = 0
+    if not(f):
+        continue
+        
+    print '\nMark: %s [%s/%s]' % (mark, num_mark, num_marks)
     re3 = '<a href="/%s/([^/]+)/">[^<]+</a>' % mark
     page = open_url('%s/%s/' % (SiteUrl, mark))
     models_block = re.search(re2, page, re.DOTALL).group(1)
 
     models = re.findall(re3, models_block)
+    num_models = len(models)
+    num_model = 0
 
     for model in models:
-        print '\nModel', model
+        num_model += 1
+        print '\nModel: %s [%s/%s]' % (model, num_model, num_models)
         print '%s/%s/%s/pictures' % (SiteUrl, mark, model)
         
         try:
@@ -101,10 +133,13 @@ for mark in marks:
             print e
 
         pictures = re.findall(re4, page)
+        num_pictures = len(pictures)
+        num_picture = 0
         for picture in pictures:
+            num_picture += 1
             try:
                 generation = re.search(re5, picture[1]).group(1)
-                print picture[0]
+                print '%s [%s/%s]' % (picture[0], num_picture, num_pictures)
                 if cur.execute("SELECT id FROM picture WHERE id = '%s'" % picture[0]).fetchone() != None:
                     continue
 
@@ -120,85 +155,5 @@ for mark in marks:
                 info = [picture[0], generation_id, SiteUrl + img_url, '0']
                 cur.execute('INSERT INTO picture values (?'+',?'*3+')',[i for i in info])
                 conn.commit()
-                sleep(3)
             except Exception as e:
                 print e
-
-
-'''page=open_url(SiteUrl).read()
-
-f=open('models.txt','r').readlines()
-
-re1='<div style="float:right;margin-bottom:1em">([^<]*?)<'
-re2='<h2 class="carCaption">(.*?)</h2>.*?<ul class="car-pictures"><li><a href="([^"]*?)">'
-re3='<a href="(/pictures/[^"]*?)">'
-re4='<a href="([^"]*?)">следующая[^<]*?</a>'
-re5='<a href="([^"]*?)">[^<]*?предыдущая</a>'
-re6='<strong style="font-size:20px;margin:0 3px">([^<]*?)<'
-
-k=0
-
-for model in f:
-    a=0
-    print model.strip()
-
-    if k>500:
-        # Change IP in Tor
-        print "Renewing tor route wait a bit for 5 seconds"
-        conn = TorCtl.connect(passphrase="lol")
-        conn.sendAndRecv('signal newnym\r\n')
-        conn.close()
-        import time
-        time.sleep(5)
-        print "IP changed"
-        k=0
-
-    while 1:
-        try:
-            a+=1
-            print a
-            page=open_url(model.strip()+'page'+str(a)+'/').read()
-            if a==1:
-               model_name=re.search(re1,page)
-               model_name=model_name.group(1).strip()
-               os.makedirs(model_name)
-            cars=re.findall(re2,page)
-            for car in cars:
-                print car[0].replace('<span class="month">','').replace('</span>','').decode('utf-8').encode('cp866','ignore')
-                os.mkdir(model_name+'//'+car[0].replace('<span class="month">','').replace('</span>','').strip().decode('utf-8').encode('cp1251'))
-                page2=open_url(SiteUrl[:-1]+car[1]).read()
-                page3=page2
-                pic=re.search(re3,page2)
-                number=re.search(re6,page2)
-                if number:
-                    open(model_name+'//'+car[0].replace('<span class="month">','').replace('</span>','').strip().decode('utf-8').encode('cp1251')+'//'+str(number.group(1))+'.jpg','wb+').write(open_url(SiteUrl[:-1]+pic.group(1)).read())
-                else:
-                    open(model_name+'//'+car[0].replace('<span class="month">','').replace('</span>','').strip().decode('utf-8').encode('cp1251')+'//'+'1.jpg','wb+').write(open_url(SiteUrl[:-1]+pic.group(1)).read())
-                k+=1
-                while 1:
-                    try:
-                        link=re.search(re4,page2)
-                        print SiteUrl[:-1]+link.group(1)
-                        page2=open_url(SiteUrl[:-1]+link.group(1)).read()
-                        pic=re.search(re3,page2)
-                        number=re.search(re6,page2)
-                        open(model_name+'//'+car[0].replace('<span class="month">','').replace('</span>','').strip().decode('utf-8').encode('cp1251')+'//'+str(number.group(1))+'.jpg','wb+').write(open_url(SiteUrl[:-1]+pic.group(1)).read())
-                        k+=1
-                    except Exception,e:
-                        break
-                page2=page3
-                while 1:
-                    try:
-                        link=re.search(re5,page2)
-                        print SiteUrl[:-1]+link.group(1)
-                        page2=open_url(SiteUrl[:-1]+link.group(1)).read()
-                        pic=re.search(re3,page2)
-                        number=re.search(re6,page2)
-                        open(model_name+'//'+car[0].replace('<span class="month">','').replace('</span>','').strip().decode('utf-8').encode('cp1251')+'//'+str(number.group(1))+'.jpg','wb+').write(open_url(SiteUrl[:-1]+pic.group(1)).read())
-                        k+=1
-                    except Exception,e:
-                        break
-        except Exception,e:
-            print str(e).decode('cp1251').encode('cp866')
-            break
-'''
