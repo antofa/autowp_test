@@ -54,19 +54,17 @@ conn = sqlite3.connect('autowp.db', timeout=300)
 conn.text_factory = str
 cur = conn.cursor()
 cur.execute('''
-CREATE TABLE IF NOT EXISTS [generation] (
+CREATE TABLE IF NOT EXISTS [car] (
   [id] INTEGER PRIMARY KEY,
-  [mark] CHAR,
-  [model] CHAR,
-  [generation] CHAR,
+  [name] CHAR,
   [path] CHAR);''')
 conn.commit()
-cur.execute('CREATE UNIQUE INDEX IF NOT EXISTS [id] ON [generation] ([id]);')
+cur.execute('CREATE UNIQUE INDEX IF NOT EXISTS [id] ON [car] ([id]);')
 conn.commit()
 cur.execute('''
 CREATE TABLE IF NOT EXISTS [picture] (
   [id] CHAR,
-  [generation_id] INTEGER,
+  [car_id] INTEGER,
   [url] CHAR,
   [is_saved] BOOLEAN);''')
 conn.commit()
@@ -78,7 +76,6 @@ SiteUrl='http://www.autowp.ru'
 socket.setdefaulttimeout(300)
 proxy_support = urllib2.ProxyHandler({"http" : "127.0.0.1:8118"} )
 
-cj = cookielib.CookieJar()
 opener = urllib2.build_opener()
 urllib2.install_opener(opener)
 
@@ -89,14 +86,15 @@ config.readfp(open('settings.ini'))
 request_timeout = config.getint(section, 'request_timeout')
 repeat_timeout = config.getint(section, 'repeat_timeout')
 start_mark = config.get(section, 'start_mark')
+end_mark = config.get(section, 'end_mark')
 use_tor = config.getboolean(section, 'use_tor')
 
-page = open_url(SiteUrl + '/brands/manufacturer')
+page = open_url(SiteUrl + '/brands')
 
 re1 = '<h4>[^<]+<a href="/([^"]+)/"'
 re2 = '<ul class="nav nav-list">(.*?)</ul>'
 re4 = '<div class="thumbnail">[^<]*<a href="/picture/([^"]+)">[^<]*<img[^>]*?title="([^"]+)"'
-re5 = "'(\d{4}.*)"
+re5 = '<li>Автомобиль: <strong>([^<]+)</strong></li>'
 re6 = '<a class="thumbnail" href="([^"]+)"'
 
 marks = re.findall(re1, page)
@@ -106,9 +104,9 @@ f = 0
 
 for mark in marks:
     num_mark += 1
-    if mark == start_mark :
+    if mark == start_mark:
         f = 1
-    if mark == 'pacific':
+    if mark == end_mark:
         f = 0
     if not(f):
         continue
@@ -125,35 +123,43 @@ for mark in marks:
     for model in models:
         num_model += 1
         print '\nModel: %s [%s/%s]' % (model, num_model, num_models)
-        print '%s/%s/%s/pictures' % (SiteUrl, mark, model)
         
-        try:
-            page = open_url('%s/%s/%s/pictures' % (SiteUrl, mark, model))
-        except Exception as e:
-            print e
-
-        pictures = re.findall(re4, page)
-        num_pictures = len(pictures)
-        num_picture = 0
-        for picture in pictures:
-            num_picture += 1
+        num_page = 0
+        t = True
+        while t:
+            num_page += 1
+            print '%s/%s/%s/pictures/page%s' % (SiteUrl, mark, model, num_page)
+            
             try:
-                generation = re.search(re5, picture[1]).group(1)
-                print '%s [%s/%s]' % (picture[0], num_picture, num_pictures)
-                if cur.execute("SELECT id FROM picture WHERE id = '%s'" % picture[0]).fetchone() != None:
-                    continue
-
-                # check here if pucture's id already exists
-                if cur.execute("SELECT id FROM generation WHERE mark = '%s' AND model = '%s' AND generation = '%s'" % (mark, model, generation)).fetchone() == None:
-                    cur.execute("INSERT INTO GENERATION (mark, model, generation) VALUES ('%s', '%s', '%s')" % (mark, model, generation)).fetchone()
-
-                generation_id = cur.execute("SELECT id FROM generation WHERE mark = '%s' AND model = '%s' AND generation = '%s'" % (mark, model, generation)).fetchone()[0]
-
-                page = open_url('%s/picture/%s' % (SiteUrl, picture[0]))
-                img_url = re.search(re6, page).group(1)
-
-                info = [picture[0], generation_id, SiteUrl + img_url, '0']
-                cur.execute('INSERT INTO picture values (?'+',?'*3+')',[i for i in info])
-                conn.commit()
+                page = open_url('%s/%s/%s/pictures/page%s' % (SiteUrl, mark, model, num_page))
             except Exception as e:
                 print e
+                
+            if page.find('next→</a>') == -1:
+                t = False
+
+            pictures = re.findall(re4, page)
+            num_pictures = len(pictures)
+            num_picture = 0
+            for picture in pictures:
+                num_picture += 1
+                try:
+                    print '%s [%s/%s]' % (picture[0], num_picture, num_pictures)
+                    if cur.execute("SELECT id FROM picture WHERE id = '%s'" % picture[0]).fetchone() != None:
+                        continue
+
+                    page = open_url('%s/picture/%s' % (SiteUrl, picture[0]))
+                    car_name = re.search(re5, page).group(1).replace("'", "''")
+                    
+                    if cur.execute("SELECT id FROM car WHERE name = '%s'" % car_name).fetchone() == None:
+                        cur.execute("INSERT INTO car (name) VALUES ('%s')" % car_name).fetchone()
+
+                    generation_id = cur.execute("SELECT id FROM car WHERE name = '%s'" % car_name).fetchone()[0]
+
+                    img_url = re.search(re6, page).group(1)
+
+                    info = [picture[0], generation_id, SiteUrl + img_url, '0']
+                    cur.execute('INSERT INTO picture values (?'+',?'*3+')',[i for i in info])
+                    conn.commit()
+                except Exception as e:
+                    print e

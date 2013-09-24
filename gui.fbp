@@ -99,10 +99,10 @@
                         <property name="cell_vert_alignment">wxALIGN_TOP</property>
                         <property name="col_label_horiz_alignment">wxALIGN_CENTRE</property>
                         <property name="col_label_size">30</property>
-                        <property name="col_label_values">&quot;id&quot; &quot;mark&quot; &quot;model&quot; &quot;generation&quot; &quot;path&quot; &quot;save&quot;</property>
+                        <property name="col_label_values">&quot;id&quot; &quot;car_name&quot; &quot;path&quot; &quot;save&quot;</property>
                         <property name="col_label_vert_alignment">wxALIGN_CENTRE</property>
-                        <property name="cols">6</property>
-                        <property name="column_sizes">49,80,80,95,143,37</property>
+                        <property name="cols">4</property>
+                        <property name="column_sizes">49,300,80,37</property>
                         <property name="context_help"></property>
                         <property name="context_menu">1</property>
                         <property name="drag_col_move">0</property>
@@ -214,7 +214,7 @@
                         <property name="font"></property>
                         <property name="hidden">0</property>
                         <property name="id">wxID_ANY</property>
-                        <property name="label">MyButton</property>
+                        <property name="label">Start</property>
                         <property name="maximum_size"></property>
                         <property name="minimum_size">100,30</property>
                         <property name="name">m_button4</property>

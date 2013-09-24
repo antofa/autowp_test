@@ -5,17 +5,70 @@ from time import sleep
 from pprint import pprint
 import os
 import urllib2
+import ConfigParser
+import socket
 
-m = ['la', 'lo', 'lu', 'ly', 'le']
 
-# Change "AutoWPApp" with the name of your application
+def yoip():
+    global opener
+    try: 
+        ip = re.search("<span class='ip'>([^<]+)</span>", opener.open('http://yoip.ru').read()).group(1)
+    except:
+        ip = 'Unknown'
+    return ip
+    
 
+def open_url(url):
+    global opener
+    f = False
+    page = ''
+
+    c = 0
+    while not(f):
+        try:
+            page = opener.open(url).read()
+            sleep(request_timeout)
+            f = True
+        except Exception, e:
+            print str(e)
+            if use_tor and str(e) == 'HTTP Error 509: Bandwidth Limit Exceeded':
+                opener = urllib2.build_opener(proxy_support)
+                # Change IP in Tor
+                print "Renewing tor route wait a bit for 5 seconds"
+                conn = TorCtl.connect(passphrase="1234qwer")
+                conn.sendAndRecv('signal newnym\r\n')
+                conn.close()
+                sleep(5)
+                ip = yoip()
+                print "IP changed to", ip
+                c = 0
+            c += 1
+            if c > 5:
+                f = True
+                page = 'error'
+                print 'error'
+            sleep(repeat_timeout)
+
+    return page
+
+    
 conn = sqlite3.connect('autowp.db', timeout=300)
 conn.text_factory = str
 cur = conn.cursor()
 
+socket.setdefaulttimeout(300)
+proxy_support = urllib2.ProxyHandler({"http" : "127.0.0.1:8118"} )
+
 opener = urllib2.build_opener()
 urllib2.install_opener(opener)
+
+section = 'autowp'
+config = ConfigParser.RawConfigParser()
+config.readfp(open('settings.ini'))
+
+request_timeout = config.getint(section, 'request_timeout')
+repeat_timeout = config.getint(section, 'repeat_timeout')
+use_tor = config.getboolean(section, 'use_tor')
 
 
 def DownloadPictures(id, path):
@@ -25,8 +78,8 @@ def DownloadPictures(id, path):
     except:
         pass
 
-    print 'Generation id:', id
-    cur.execute('select id, url from picture where generation_id = %s and is_saved = 0' % id)
+    print 'Car id:', id
+    cur.execute('select id, url from picture where car_id = %s and is_saved = 0' % id)
 
     pics = []
     for row in cur.fetchall():
@@ -41,6 +94,8 @@ def DownloadPictures(id, path):
 
         cur.execute("update picture set is_saved = 1 where url = '%s'" % pic[1]).fetchone()
         conn.commit()
+    cur.execute("update car set path = '%s' where id = %s" % ('pictures/' + path, id)).fetchone()
+    conn.commit()
     print 'Finish'
 
 
@@ -50,19 +105,19 @@ class MyFrame(Frame1):
         table = m_grid1.GetTable()
         n = table.GetNumberRows()
         for i in range(n):
-            if table.GetValue(i, 5):
+            if table.GetValue(i, 3):
                 id = table.GetValue(i, 0)
-                path = table.GetValue(i, 4)
+                path = table.GetValue(i, 2)
                 DownloadPictures(id, path)
         self.OnInit()
 
     def OnInit(self):
         m_grid1 = self.m_grid1
 
-        cur.execute("SELECT distinct g.id, mark, model, generation FROM generation g, picture p where p.generation_id = g.id and p.is_saved = 0")
+        cur.execute("SELECT distinct c.id, name FROM car c, picture p where p.car_id = c.id and p.is_saved = 0")
         c = 0
 
-        m_grid1.SetColFormatBool(5)
+        m_grid1.SetColFormatBool(3)
         n_rows = m_grid1.GetTable().GetNumberRows()
         if n_rows > 0:
             m_grid1.DeleteRows(0, n_rows)
@@ -70,7 +125,7 @@ class MyFrame(Frame1):
         for row in cur.fetchall():
             m_grid1.AppendRows(1)
             table = m_grid1.GetTable()
-            for i in range(4):
+            for i in range(2):
                 table.SetValue(c, i, str(row[i]).decode('utf8'))
             c += 1        
 

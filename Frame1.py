@@ -26,7 +26,7 @@ class Frame1 ( wx.Frame ):
 		self.m_grid1 = wx.grid.Grid( self, wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize, 0 )
 		
 		# Grid
-		self.m_grid1.CreateGrid( 0, 6 )
+		self.m_grid1.CreateGrid( 0, 4 )
 		self.m_grid1.EnableEditing( True )
 		self.m_grid1.EnableGridLines( True )
 		self.m_grid1.EnableDragGridSize( True )
@@ -34,20 +34,16 @@ class Frame1 ( wx.Frame ):
 		
 		# Columns
 		self.m_grid1.SetColSize( 0, 49 )
-		self.m_grid1.SetColSize( 1, 80 )
+		self.m_grid1.SetColSize( 1, 300 )
 		self.m_grid1.SetColSize( 2, 80 )
-		self.m_grid1.SetColSize( 3, 95 )
-		self.m_grid1.SetColSize( 4, 143 )
-		self.m_grid1.SetColSize( 5, 37 )
+		self.m_grid1.SetColSize( 3, 37 )
 		self.m_grid1.EnableDragColMove( False )
 		self.m_grid1.EnableDragColSize( True )
 		self.m_grid1.SetColLabelSize( 30 )
 		self.m_grid1.SetColLabelValue( 0, u"id" )
-		self.m_grid1.SetColLabelValue( 1, u"mark" )
-		self.m_grid1.SetColLabelValue( 2, u"model" )
-		self.m_grid1.SetColLabelValue( 3, u"generation" )
-		self.m_grid1.SetColLabelValue( 4, u"path" )
-		self.m_grid1.SetColLabelValue( 5, u"save" )
+		self.m_grid1.SetColLabelValue( 1, u"car_name" )
+		self.m_grid1.SetColLabelValue( 2, u"path" )
+		self.m_grid1.SetColLabelValue( 3, u"save" )
 		self.m_grid1.SetColLabelAlignment( wx.ALIGN_CENTRE, wx.ALIGN_CENTRE )
 		
 		# Rows
@@ -61,7 +57,7 @@ class Frame1 ( wx.Frame ):
 		self.m_grid1.SetDefaultCellAlignment( wx.ALIGN_LEFT, wx.ALIGN_TOP )
 		bSizer2.Add( self.m_grid1, 0, wx.ALL, 5 )
 		
-		self.m_button4 = wx.Button( self, wx.ID_ANY, u"MyButton", wx.DefaultPosition, wx.DefaultSize, 0 )
+		self.m_button4 = wx.Button( self, wx.ID_ANY, u"Start", wx.DefaultPosition, wx.DefaultSize, 0 )
 		self.m_button4.SetDefault() 
 		self.m_button4.SetMinSize( wx.Size( 100,30 ) )
 		
