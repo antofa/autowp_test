@@ -1,12 +1,24 @@
 ﻿# coding: utf-8
 import httplib
-import os,cookielib,urllib2
+import cookielib, urllib2
 import re, csv, sqlite3
 from time import sleep
+import os, sys
+from datetime import datetime
 from TorCtl import TorCtl
 import ConfigParser
 import socket
 
+
+class Logger(object):
+    def __init__(self):
+        self.terminal = sys.stdout
+        self.log = open(section+'_'+datetime.now().strftime('%Y-%m-%d')+'.log', 'a')
+
+    def write(self, message):
+        self.terminal.write(message)
+        self.log.write(message)
+        
 
 def yoip():
     global opener
@@ -88,6 +100,12 @@ repeat_timeout = config.getint(section, 'repeat_timeout')
 start_mark = config.get(section, 'start_mark')
 end_mark = config.get(section, 'end_mark')
 use_tor = config.getboolean(section, 'use_tor')
+logging = config.getboolean(section, 'logging')
+
+if logging == True:
+    sys.stdout = Logger()
+    
+print '\n', datetime.now().ctime(), 'Start'
 
 page = open_url(SiteUrl + '/brands')
 
