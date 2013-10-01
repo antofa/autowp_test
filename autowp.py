@@ -75,7 +75,7 @@ cur.execute('CREATE UNIQUE INDEX IF NOT EXISTS [id] ON [car] ([id]);')
 conn.commit()
 cur.execute('''
 CREATE TABLE IF NOT EXISTS [picture] (
-  [id] CHAR,
+  [id] CHAR PRIMARY KEY,
   [car_id] INTEGER,
   [url] CHAR,
   [is_saved] BOOLEAN);''')
